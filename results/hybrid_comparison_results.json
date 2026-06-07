@@ -1,0 +1,20 @@
+[
+  {
+    "image": "data/colored_images/Moderate\\000c1434d8d7.png",
+    "lime_del_auc": 0.20602390952408312,
+    "hybrid_del_auc": 0.2248542096465826,
+    "lime_ins_auc": 0.541906876116991,
+    "hybrid_ins_auc": 0.5396082095801831,
+    "del_improvement": 0.916255514397101,
+    "ins_improvement": 0.9957581890208169
+  },
+  {
+    "image": "data/colored_images/Moderate\\00a8624548a9.png",
+    "lime_del_auc": 0.41305999010801314,
+    "hybrid_del_auc": 0.41646706834435465,
+    "lime_ins_auc": 0.7144422590732574,
+    "hybrid_ins_auc": 0.7135942101478577,
+    "del_improvement": 0.9918190932841673,
+    "ins_improvement": 0.9988129916523979
+  }
+]

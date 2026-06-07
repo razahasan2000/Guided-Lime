@@ -1,0 +1,55 @@
+{
+  "n_images": 25,
+  "bootstrap_ci": {
+    "LIME Deletion AUC": {
+      "mean": 0.32604102378664535,
+      "ci_lower": 0.27215910059921444,
+      "ci_upper": 0.38713063522400337,
+      "std": 0.14755859963852977
+    },
+    "Random Deletion AUC": {
+      "mean": 0.542660980945453,
+      "ci_lower": 0.4851356447532679,
+      "ci_upper": 0.5939980234008935,
+      "std": 0.1459729091184803
+    },
+    "LIME Insertion AUC": {
+      "mean": 0.6507126824259758,
+      "ci_lower": 0.5898271386809647,
+      "ci_upper": 0.7108681323580445,
+      "std": 0.1524201983452051
+    },
+    "Random Insertion AUC": {
+      "mean": 0.49028256736211473,
+      "ci_lower": 0.43397080392997706,
+      "ci_upper": 0.547806767458627,
+      "std": 0.14435945400029504
+    }
+  },
+  "wilcoxon_deletion": {
+    "W": 0.0,
+    "p": 2.9802322387695312e-08,
+    "r": 1.0,
+    "significant": true,
+    "interpretation": "p=0.0000 < 0.05 --- SIGNIFICANT | effect size r=1.000"
+  },
+  "wilcoxon_insertion": {
+    "W": 324.0,
+    "p": 5.960464477539063e-08,
+    "r": 0.9938461538461538,
+    "significant": true,
+    "interpretation": "p=0.0000 < 0.05 --- SIGNIFICANT | effect size r=0.994"
+  },
+  "lime_improvement": {
+    "deletion": {
+      "mean": 0.21661995715880766,
+      "ci_lower": 0.1769563125060289,
+      "ci_upper": 0.2592578194380505
+    },
+    "insertion": {
+      "mean": 0.160430115063861,
+      "ci_lower": 0.12786196160075256,
+      "ci_upper": 0.1923038359618094
+    }
+  }
+}

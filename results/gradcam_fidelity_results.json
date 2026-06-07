@@ -1,0 +1,212 @@
+{
+  "summary": {
+    "avg_lime_deletion_auc": 0.3260411662021652,
+    "avg_gcam_deletion_auc": 0.4416225222777575,
+    "avg_lime_insertion_auc": 0.6507126609720291,
+    "avg_gcam_insertion_auc": 0.6219204791523516,
+    "winner_deletion": "LIME",
+    "winner_insertion": "LIME"
+  },
+  "per_image": [
+    {
+      "image": "ef5155990874.png",
+      "class": "Moderate",
+      "lime_del": 0.21919021806679667,
+      "gcam_del": 0.5016027949750423,
+      "lime_ins": 0.7215586796402932,
+      "gcam_ins": 0.8322661340236664
+    },
+    {
+      "image": "0a85a1e8f9e9.png",
+      "class": "Moderate",
+      "lime_del": 0.19832538189366464,
+      "gcam_del": 0.35203950032591824,
+      "lime_ins": 0.5248064868152141,
+      "gcam_ins": 0.7006069622933865
+    },
+    {
+      "image": "6a2642131e4a.png",
+      "class": "Moderate",
+      "lime_del": 0.45487439967691895,
+      "gcam_del": 0.7813391268253326,
+      "lime_ins": 0.8204351067543031,
+      "gcam_ins": 0.7558671653270721
+    },
+    {
+      "image": "8a8a251770cd.png",
+      "class": "Moderate",
+      "lime_del": 0.6468233183026315,
+      "gcam_del": 0.7152099639177322,
+      "lime_ins": 0.8586038053035737,
+      "gcam_ins": 0.8701503679156304
+    },
+    {
+      "image": "ac1667fac512.png",
+      "class": "Moderate",
+      "lime_del": 0.14310519897844642,
+      "gcam_del": 0.41535783708095547,
+      "lime_ins": 0.5655208282172679,
+      "gcam_ins": 0.5836189731955528
+    },
+    {
+      "image": "d801c0a66738.png",
+      "class": "No_DR",
+      "lime_del": 0.17949946178123352,
+      "gcam_del": 0.43578001558780666,
+      "lime_ins": 0.7013669490814207,
+      "gcam_ins": 0.6640252515673637
+    },
+    {
+      "image": "172df1330a60.png",
+      "class": "Mild",
+      "lime_del": 0.3345862746238708,
+      "gcam_del": 0.31828230656683454,
+      "lime_ins": 0.5308763675391674,
+      "gcam_ins": 0.5220317669212818
+    },
+    {
+      "image": "0a3202889f4d.png",
+      "class": "No_DR",
+      "lime_del": 0.16973285330459476,
+      "gcam_del": 0.46401362121105194,
+      "lime_ins": 0.48161648213863384,
+      "gcam_ins": 0.5415127925574779
+    },
+    {
+      "image": "cf0575534cec.png",
+      "class": "No_DR",
+      "lime_del": 0.2113989444449544,
+      "gcam_del": 0.30279698483645917,
+      "lime_ins": 0.5489406500011683,
+      "gcam_ins": 0.5535800870507955
+    },
+    {
+      "image": "278aa860dffd.png",
+      "class": "No_DR",
+      "lime_del": 0.6078531049191951,
+      "gcam_del": 0.5657725572586061,
+      "lime_ins": 0.6012055851519108,
+      "gcam_ins": 0.5614089272916317
+    },
+    {
+      "image": "6f0463c1ff18.png",
+      "class": "Mild",
+      "lime_del": 0.32514788359403607,
+      "gcam_del": 0.48552551865577703,
+      "lime_ins": 0.4769657600671053,
+      "gcam_ins": 0.49565151073038577
+    },
+    {
+      "image": "c6e1e9fbf39b.png",
+      "class": "Mild",
+      "lime_del": 0.19881900064647198,
+      "gcam_del": 0.2382522396743298,
+      "lime_ins": 0.2793034218251706,
+      "gcam_ins": 0.2966709360480309
+    },
+    {
+      "image": "310c27067ac0.png",
+      "class": "Mild",
+      "lime_del": 0.2520474847406149,
+      "gcam_del": 0.39085172228515147,
+      "lime_ins": 0.4801833573728799,
+      "gcam_ins": 0.36235873140394687
+    },
+    {
+      "image": "48fda42bd5d4.png",
+      "class": "Mild",
+      "lime_del": 0.4606282085180282,
+      "gcam_del": 0.5682037502527236,
+      "lime_ins": 0.7499109625816346,
+      "gcam_ins": 0.6943809777498247
+    },
+    {
+      "image": "b8ac328009e0.png",
+      "class": "Mild",
+      "lime_del": 0.23221193701028825,
+      "gcam_del": 0.5174446411430836,
+      "lime_ins": 0.49220533780753617,
+      "gcam_ins": 0.6147871311753988
+    },
+    {
+      "image": "3e3a3955b9c5.png",
+      "class": "Mild",
+      "lime_del": 0.23167516887187956,
+      "gcam_del": 0.41738177575171,
+      "lime_ins": 0.4903644628822804,
+      "gcam_ins": 0.5231664650142193
+    },
+    {
+      "image": "b191ba0a2b12.png",
+      "class": "Proliferative_DR",
+      "lime_del": 0.4253839928656816,
+      "gcam_del": 0.2449385219719261,
+      "lime_ins": 0.7619625944644213,
+      "gcam_ins": 0.6884512294083833
+    },
+    {
+      "image": "697538183db5.png",
+      "class": "Proliferative_DR",
+      "lime_del": 0.5025469534099103,
+      "gcam_del": 0.47219060137867935,
+      "lime_ins": 0.8063543085008861,
+      "gcam_ins": 0.6784189645200968
+    },
+    {
+      "image": "b960142a8de7.png",
+      "class": "Proliferative_DR",
+      "lime_del": 0.22700433265417816,
+      "gcam_del": 0.49318612366914755,
+      "lime_ins": 0.6883233457803726,
+      "gcam_ins": 0.39515088647603985
+    },
+    {
+      "image": "9878db94d9f3.png",
+      "class": "Proliferative_DR",
+      "lime_del": 0.3903073120862246,
+      "gcam_del": 0.41439961194992075,
+      "lime_ins": 0.7705730397254229,
+      "gcam_ins": 0.7335761573165654
+    },
+    {
+      "image": "ed3a0fc5b546.png",
+      "class": "Severe",
+      "lime_del": 0.46015817746520044,
+      "gcam_del": 0.4733884984627367,
+      "lime_ins": 0.8365727502852678,
+      "gcam_ins": 0.7002478938549757
+    },
+    {
+      "image": "838c87c63422.png",
+      "class": "Severe",
+      "lime_del": 0.5689155049622059,
+      "gcam_del": 0.6739543687552213,
+      "lime_ins": 0.8082234796136617,
+      "gcam_ins": 0.7382168468087911
+    },
+    {
+      "image": "4a7dc013e802.png",
+      "class": "Severe",
+      "lime_del": 0.32575492970645425,
+      "gcam_del": 0.2606073159724474,
+      "lime_ins": 0.8065653249621391,
+      "gcam_ins": 0.7573851332068444
+    },
+    {
+      "image": "4a3da369b227.png",
+      "class": "Severe",
+      "lime_del": 0.1962558776140213,
+      "gcam_del": 0.25648656710982326,
+      "lime_ins": 0.8191793416626751,
+      "gcam_ins": 0.7650350947864354
+    },
+    {
+      "image": "e4730ddde408.png",
+      "class": "Mild",
+      "lime_del": 0.1887832349166274,
+      "gcam_del": 0.2815570913255215,
+      "lime_ins": 0.6461980961263181,
+      "gcam_ins": 0.5194455921649933
+    }
+  ]
+}

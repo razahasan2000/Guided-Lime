@@ -1,0 +1,28 @@
+
+STATISTICAL VALIDATION REPORT
+==============================
+N images evaluated: 25
+Bootstrap iterations: 1000
+Significance level: alpha = 0.05
+
+BOOTSTRAP CONFIDENCE INTERVALS (95%)
+--------------------------------------
+LIME Deletion AUC:    0.3260  [0.2722, 0.3871]
+Random Deletion AUC:  0.5427  [0.4851, 0.5940]
+LIME Insertion AUC:   0.6507  [0.5898, 0.7109]
+Random Insertion AUC: 0.4903  [0.4340, 0.5478]
+
+WILCOXON SIGNED-RANK TESTS
+--------------------------------------
+Deletion  (H1: LIME AUC < Random AUC):
+  W=0.0, p=0.0000, r=1.000
+  p=0.0000 < 0.05 --- SIGNIFICANT | effect size r=1.000
+
+Insertion (H1: LIME AUC > Random AUC):
+  W=324.0, p=0.0000, r=0.994
+  p=0.0000 < 0.05 --- SIGNIFICANT | effect size r=0.994
+
+LIME IMPROVEMENT OVER RANDOM
+--------------------------------------
+Deletion  improvement: +0.2166  95% CI [+0.1770, +0.2593]
+Insertion improvement: +0.1604  95% CI [+0.1279, +0.1923]

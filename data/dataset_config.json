@@ -1,0 +1,52 @@
+{
+    "dataset_name": "APTOS 2019 Blindness Detection",
+    "dataset_link": "https://data.mendeley.com/datasets/nxcd8krdhg/1",
+    "num_classes": 5,
+    "class_names": ["No_DR", "Mild", "Moderate", "Severe", "Proliferative_DR"],
+    "class_to_idx": {
+        "No_DR": 0,
+        "Mild": 1,
+        "Moderate": 2,
+        "Severe": 3,
+        "Proliferative_DR": 4
+    },
+    "image_size": 224,
+    "train_split": 0.8,
+    "val_split": 0.1,
+    "test_split": 0.1,
+    "batch_size": 32,
+    "num_workers": 4,
+    "random_seed": 42,
+    "model": {
+        "architecture": "Swin Transformer",
+        "variant": "swin_t",
+        "pretrained": false,
+        "num_classes": 5
+    },
+    "training": {
+        "epochs": 50,
+        "learning_rate": 0.0001,
+        "optimizer": "AdamW",
+        "weight_decay": 0.01,
+        "scheduler": "CosineAnnealingLR",
+        "early_stopping_patience": 10
+    },
+    "lime": {
+        "num_samples": 1000,
+        "hide_color": 0,
+        "top_labels": 1
+    },
+    "fidelity_metrics": {
+        "num_steps": 20,
+        "num_random_runs": 5,
+        "deletion_replacement": 0,
+        "insertion_replacement": 128
+    },
+    "paths": {
+        "train_images": "data/train_images/",
+        "test_images": "data/test_images/",
+        "train_labels": "data/train.csv",
+        "model_checkpoint": "models/swin_transformer_best.pth",
+        "results_dir": "results/"
+    }
+}
