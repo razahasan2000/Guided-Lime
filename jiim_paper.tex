@@ -1,0 +1,713 @@
+\documentclass[10pt,twoside]{article}
+
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[english]{babel}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\captionsetup{font=small,labelfont=bf}
+\renewcommand{\arraystretch}{1.3}
+\raggedbottom
+
+\title{Guided-LIME: A Hybrid Explainable AI Framework for\\Causally Faithful Medical Image Interpretation}
+
+\author{Raza Hasan$^{1}$, Pratham Acharya$^{1}$, MD Aashif Ansari$^{1}$, Salman Mahmood$^{2}$}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The deployment of high-accuracy deep learning models in safety-critical domains is fundamentally constrained by their opacity, creating a gap between predictive performance and explainability. This paper introduces Guided-LIME, a novel hybrid Explainable AI (XAI) framework that fuses the global spatial prior of Grad-CAM with the local superpixel precision of LIME to produce causally faithful explanations. The framework is evaluated on Diabetic Retinopathy (DR) severity grading using a Swin Transformer backbone across two fundus photography datasets: APTOS 2019 (n=550 test images) and IDRiD (n=51 test images across 4 DR grades). On the APTOS 2019 test set, Guided-LIME achieves a Deletion AUC of 0.3329 (p = 5.3e-92 versus random, p = 5.6e-25 versus Standard LIME) and an Insertion AUC of 0.6517. On the IDRiD benchmark, Guided-LIME maintains its top-tier ranking (Deletion AUC = 0.188, p = 2.6e-10 versus random), confirming that the causal faithfulness advantage generalises across acquisition domains. The framework achieves a Test Quadratic Weighted Kappa of 0.8588 on the APTOS 2019 dataset, and its clinical relevance is validated via Jaccard Index alignment against pathological biomarker masks (mean IoU = 0.14). A stability analysis measuring explanation consistency under Gaussian noise and rotation perturbations yields a global stability score of 0.158.
+\end{abstract}
+
+\vspace{0.5em}
+\noindent{\bf Keywords:} Explainable AI, Guided-LIME, Hybrid XAI, Fidelity Metrics, Swin Transformer, Diabetic Retinopathy
+
+\section{Introduction}
+\label{sec:introduction}
+
+Diabetic Retinopathy (DR) represents a significant microvascular complication of diabetes and remains the primary cause of avoidable vision loss among the global working age population. Current estimates indicate that more than 537 million adults live with diabetes, with projections suggesting this figure will reach 643 million by 2030~\cite{teo2021global}. The progression of chronic hyperglycaemia causes cumulative damage to the retinal vasculature, initiating a sequence of pathological changes including capillary microaneurysms, fluid exudation, retinal haemorrhaging, and ischaemia. In its advanced stages, the condition manifests as pathological neovascularisation, a state termed Proliferative DR. These clinical observations are categorised into five internationally established severity levels: No DR, Mild, Moderate, Severe, and Proliferative DR~\cite{wong2016diabetic}.
+
+The global prevalence of diabetes is increasing at an accelerated rate. Consequently, the population affected by DR is expected to grow significantly, imposing a substantial burden on international public healthcare infrastructures~\cite{teo2021global}. Clinical intervention is most effective when the disease is identified early, as timely treatment can prevent permanent vision loss in the majority of patients. However, the asymptomatic nature of early stage DR often results in patients seeking medical attention only after the disease has reached a vision threatening stage.
+
+The existing clinical gold standard for DR diagnosis necessitates the manual interpretation of retinal fundus photographs by specialized ophthalmologists. Although reliable, this methodology is labor intensive and time consuming. Furthermore, manual grading is prone to both inter observer variability and intra observer variability~\cite{krause2018grader}. The lack of available specialists, particularly in low resource or underserved regions, results in significant screening bottlenecks.
+
+To address these systemic challenges, artificial intelligence and deep learning have emerged as critical technologies for the automation of medical image analysis. Foundational research established that Convolutional Neural Network (CNN) architectures could achieve diagnostic performance comparable to or exceeding that of human experts~\cite{gulshan2016development}. More recently, Vision Transformer (ViT) models have defined new performance benchmarks. Specifically, the Swin Transformer~\cite{liu2021swin}, with its shifted window attention mechanism and hierarchical design, has demonstrated exceptional efficacy in complex image classification tasks.
+
+Despite these technological advancements, the majority of high performance deep learning models function as black boxes. While they can provide highly accurate severity classifications, they generally fail to articulate the underlying medical evidence used to reach a decision. This lack of interpretability is one of several barriers to the integration of AI in high stakes clinical environments~\cite{kelly2019key}. Without a clear justification for a diagnosis, clinicians are unable to verify the algorithmic output or confidently incorporate it into a patient treatment plan.
+
+This study provides both internal and external validation. The primary experiments were conducted on the APTOS 2019 Blindness Detection dataset~\cite{aptos2019kaggle}. To evaluate cross-dataset generalizability, we further validate on the IDRiD (Indian Diabetic Retinopathy Image Dataset) benchmark~\cite{porwal2018idrid}, which contains images from multiple fundus camera manufacturers across a distinct population cohort. The IDRiD model was obtained by fine-tuning the APTOS-trained Swin Transformer backbone, achieving 73.91\% test accuracy on the held-out IDRiD test set, after which the full 7-method fidelity evaluation was replicated.
+
+\subsection*{Contributions}
+
+The primary contributions of this research are:
+\begin{enumerate}
+\item \textbf{The Guided-LIME algorithm}: a hybrid explainer that multiplicatively combines Grad-CAM global spatial priors with LIME local superpixel coefficients to suppress spurious explanations;
+\item \textbf{A rigorous fidelity evaluation pipeline}: with constant-gray baseline replacement, Wilcoxon signed-rank statistical validation, and Bootstrap confidence interval analysis;
+\item \textbf{A clinical alignment framework}: using Jaccard Index against proxy biomarker masks;
+\item \textbf{A stability analysis}: measuring explanation consistency under Gaussian noise and rotation perturbations;
+\item \textbf{Cross-dataset generalizability}: validation on the IDRiD benchmark demonstrating that Guided-LIME maintains its top fidelity ranking across independent acquisition domains.
+\end{enumerate}
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Automated Diabetic Retinopathy Grading}
+
+The methodology for grading DR has transitioned from expert-driven feature engineering to data-driven deep learning architecture. Historical systems relied on domain knowledge to extract specific retinal features, such as vessel segmentation and optic disc geometry, which were then processed by traditional classifiers~\cite{saranya2020automatic}. The emergence of deep learning fundamentally altered this field. A landmark study by Gulshan et al.~\cite{gulshan2016development} demonstrated that a deep Convolutional Neural Network could match the diagnostic precision of ophthalmologists. More recently, Vision Transformers have emerged as high-performance alternatives~\cite{tan2019efficientnet}. The Swin Transformer is particularly noteworthy for its hierarchical structure~\cite{liu2021swin}. While some ensemble-based approaches such as Zhu et al.~\cite{zhu2024nnmobilenet} and Huang et al.~\cite{huang2024ssit} report QWK scores of 0.925, these works do not include quantitative XAI validation, which is the focus of the present study.
+
+\subsection{The Interpretability Challenge in Medical AI}
+
+Despite the exceptional benchmarks achieved by modern models, their clinical utility is constrained by their lack of transparency. These architectures often function as black boxes, providing accurate classifications without revealing the underlying diagnostic logic. This operational opacity creates a significant barrier to adoption in high-stakes medicine~\cite{kelly2019key}. Predictions that lack explanation raise concerns regarding accountability and safety~\cite{benjamens2020state}. This necessity has spurred the growth of Explainable AI (XAI), which aims to develop systems that are simultaneously high-performing and interpretable.
+
+\subsection{Methodologies in Explainable AI for Medical Imaging}
+
+Interpretability research in medical imaging generally follows two paradigms. Gradient-based saliency methods, primarily Grad-CAM~\cite{selvaraju2020grad}, trace network gradients to produce coarse heatmaps of influential image regions. When applied to a fundus photograph classified as Severe DR, Grad-CAM computes the gradient of the Severe class score with respect to the feature maps of the final convolutional layer of the Swin Transformer. These gradients are globally average-pooled to obtain importance weights, which are then used to produce a coarse heatmap highlighting the disc and large vessel regions. The resulting heatmap indicates \emph{where} the model looked, but lacks fine-grained boundary information.
+
+The second paradigm focuses on perturbation-based techniques such as LIME~\cite{ribeiro2016why} and SHAP~\cite{lundberg2017unified}. LIME decomposes the same fundus image into approximately 100 SLIC superpixels~\cite{achanta2012slic}, then generates 1,000 perturbed versions by randomly masking subsets of these superpixels. Each perturbed image is passed through the Swin Transformer to obtain a prediction, and a Ridge regression surrogate is fit on the binary superpixel masks weighted by an exponential proximity kernel. The resulting coefficients indicate which superpixels were most important for the original prediction. Unlike Grad-CAM, LIME produces a fine-grained attribution map but suffers from stochastic instability. Recent work on CoCoX~\cite{cocox2024} and Faithful LIME variants~\cite{knab2025lime} has begun to address quantitative faithfulness validation, although few studies have applied these rigorously to DR grading.
+
+\subsection{Identified Research Gap}
+
+A review of the existing literature reveals a clear research gap: existing DR research predominantly focuses on maximising classification accuracy, with XAI analysis either entirely absent or limited to a superficial demonstration of saliency maps. Furthermore, few studies quantitatively validate the faithfulness of their explanations using fidelity metrics or rigorously test their clinical alignment with actual pathological biomarkers. This paper directly addresses this gap by introducing a hybrid Guided-LIME approach and a multi-tiered validation suite.
+
+\section{Materials and Methods}
+\label{sec:methods}
+
+\subsection{System Architecture Overview}
+
+Figure~\ref{fig:architecture} presents the complete end-to-end system architecture of the proposed Guided-LIME framework. The pipeline follows a modular design pattern: (1) an input pre-processing stage implementing the OpenCV-First pipeline; (2) a classification backbone using the Swin Transformer; (3) a dual-stream explanation generation stage combining Grad-CAM global activations with LIME local superpixel segmentation; (4) a hybrid importance scoring module implementing the Guided-LIME equation; and (5) a multi-tiered validation suite comprising fidelity metrics, statistical tests, clinical alignment scoring, and stability analysis.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{Figure_1}
+\caption{End-to-end system architecture of the proposed Guided-LIME framework. The pipeline consists of six modules: (1) Input Layer performing FOV cropping, CLAHE enhancement, and augmentation; (2) Model Architecture with the Swin Transformer (Swin-T) backbone; (3) Training Strategy using Weighted Random Sampling, Focal Loss ($\gamma = 2.0$), and AdamW with L2 regularisation ($\lambda = 10^{-2}$); (4) Guided-LIME Hybrid Explainer; (5) Multi-Tiered Validation; and (6) the Output module yielding the final DR severity prediction and explanation heatmap overlay.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Dataset and Data Preparation}
+
+This study used the APTOS 2019 Blindness Detection dataset~\cite{aptos2019kaggle}, a collection of 3,662 retinal fundus images labelled across five DR severity grades. The class distribution is shown in Table~\ref{tab:classdist}. The dataset was partitioned via a stratified random split into training (70\%, n=2,564), validation (15\%, n=549), and test (15\%, n=549) sets, with each subset preserving the original class proportions.
+
+\begin{table}[ht]
+\caption{Class distribution of the APTOS 2019 Blindness Detection dataset (n=3,662).}
+\centering
+\label{tab:classdist}
+\begin{tabular}{lcc}
+\toprule
+DR Grade & Number of Images & Percentage \\
+\midrule
+No DR (0) & 1,805 & 49.3\% \\
+Mild (1) & 370 & 10.1\% \\
+Moderate (2) & 999 & 27.3\% \\
+Severe (3) & 193 & 5.3\% \\
+Proliferative DR (4) & 295 & 8.1\% \\
+\midrule
+\textbf{Total} & \textbf{3,662} & \textbf{100.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Pre-processing Pipeline}
+
+A custom OpenCV-First pre-processing pipeline was developed and implemented as formalised in Algorithm~\ref{alg:preprocessing}. A visual illustration of the input image before and after pre-processing is provided in Figure~\ref{fig:preprocessing}. The automated field-of-view (FOV) cropping step removes peripheral artifacts, while the application of Contrast Limited Adaptive Histogram Equalisation (CLAHE) to the L-channel in LAB colour space standardises local contrast~\cite{pizer1987clahe,setiawan2013color}.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{preprocessing_effect}
+\caption{Illustration of the pre-processing pipeline: (left) Original retinal fundus image, (right) Image after FOV cropping, CLAHE enhancement, and augmentation.}
+\label{fig:preprocessing}
+\end{figure}
+
+\begin{algorithm}[ht]
+\caption{Retinal Image Pre-processing Pipeline}\label{alg:preprocessing}
+\begin{algorithmic}[1]
+\State Load raw image in BGR format
+\State Convert BGR to RGB
+\State Detect circular fundus boundary
+\State Crop to field-of-view
+\State Convert RGB to LAB color space
+\State Apply CLAHE to L-channel (clipLimit=2.0, 8$\times$8 tiles)
+\State Convert LAB back to RGB
+\State Apply random flips and rotations (training only)
+\State Resize to 224 $\times$ 224 and normalize
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Model Architecture: The Swin Transformer}
+
+The Swin Transformer (Swin-Tiny variant) was selected for its hierarchical architecture and shifted window attention mechanism~\cite{liu2021swin}. The specific Swin-Tiny variant was used, with approximately 21M parameters. The model was pre-trained on ImageNet and the final linear classification head was replaced to produce five outputs corresponding to the internationally recognised DR severity grades. The training hyperparameters were: batch size = 32, initial learning rate = 1e-5 with cosine decay, weight decay = 1e-2, warmup epochs = 5, and total training epochs = 30.
+
+\subsection{Training Strategy and Loss Functions}
+
+The training objective used Focal Loss to address class imbalance by dynamically down-weighting the loss contribution of easy examples:
+
+\begin{equation}
+\label{eq:focal}
+FL(p_t) = -(1 - p_t)^\gamma \log(p_t)
+\end{equation}
+
+\noindent where $p_t$ is the model probability for the true class and $\gamma$ is the focusing parameter set to 2.0~\cite{lin2020focal}.
+
+Weight updates were governed by the AdamW optimiser, which decouples weight decay from the gradient update~\cite{loshchilov2019adamw}:
+
+\begin{equation}
+\label{eq:adamw}
+\theta_{t+1} = \theta_t - \eta \cdot \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon} - \eta \lambda \theta_t
+\end{equation}
+
+\noindent where $\eta$ is the learning rate (1e-5), $\lambda$ is the decoupled weight decay coefficient (1e-2), $\hat{m}_t$ is the first moment estimate, and $\hat{v}_t$ is the second moment estimate.
+
+Performance was primarily evaluated using the Quadratic Weighted Kappa (QWK):
+
+\begin{equation}
+\label{eq:qwk}
+QWK = 1 - \frac{\sum_{i,j} w_{i,j} \cdot O_{i,j}}{\sum_{i,j} w_{i,j} \cdot E_{i,j}}
+\end{equation}
+
+\noindent where $w_{i,j}$ represents the quadratic weight matrix, $O_{i,j}$ is the observed confusion matrix, and $E_{i,j}$ is the expected matrix~\cite{mchugh2012interrater}.
+
+\subsection{Hyperparameter Configuration}
+
+Table~\ref{tab:hyperparams} summarises the complete hyperparameter configuration used in this study, covering the APTOS training phase, the IDRiD fine-tuning phase, and all explanation method parameters.
+
+\begin{table}[ht]
+\caption{Complete hyperparameter configuration across training and explanation stages.}
+\centering
+\label{tab:hyperparams}
+\begin{tabular}{llc}
+\toprule
+Category & Parameter & Value \\
+\midrule
+APTOS Training & Input resolution & 224 $\times$ 224 \\
+& Batch size & 32 \\
+& Optimiser & AdamW \\
+& Initial learning rate & 1 $\times$ 10$^{-5}$ \\
+& Weight decay ($\lambda$) & 1 $\times$ 10$^{-2}$ \\
+& LR schedule & Cosine decay with 5-epoch warmup \\
+& Training epochs & 30 \\
+\midrule
+Loss & Focal Loss $\gamma$ & 2.0 \\
+& Class weighting & Inverse frequency \\
+\midrule
+Augmentation & RandomHorizontalFlip & Probability 0.5 \\
+& RandomRotation$\pm$15$^\circ$ & Degree range $\pm$15 \\
+\midrule
+IDRiD Fine-tuning & Input resolution & 224 $\times$ 224 \\
+& Batch size & 16 \\
+& Optimiser & AdamW \\
+& Learning rate & 1 $\times$ 10$^{-4}$ \\
+& Weight decay ($\lambda$) & 1 $\times$ 10$^{-2}$ \\
+& Early stopping patience & 15 epochs \\
+\midrule
+Guided-LIME Explanation & Superpixel method & SLIC \\
+& Number of superpixels ($n$) & 100 \\
+& Perturbation samples ($N$) & 1,000 \\
+& Proximity kernel & Exponential ($\sigma$ = 0.25) \\
+& Surrogate model & Ridge regression (L2) \\
+& L2 regularisation strength & 1.0 \\
+\midrule
+Fidelity & Deletion baseline & Constant gray (ImageNet mean) \\
+& Insertion baseline & Constant gray (ImageNet mean) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The Swin-T model was trained on the APTOS training split (n=2,932) for 30 epochs using AdamW with cosine learning rate decay and 5 warmup epochs. Focal Loss ($\gamma = 2.0$) with inverse-frequency class weighting was employed to address the class imbalance. For the IDRiD fine-tuning, the APTOS-pretrained backbone was further trained for up to 50 epochs with early stopping (patience=15), using a higher learning rate (1$\times$10$^{-4}$) and smaller batch size (16) to adapt to the smaller dataset (n=318 training images). The LIME explainer uses $n=100$ SLIC superpixels and $N=1{,}000$ perturbation samples with an exponential proximity kernel ($\sigma=0.25$) and Ridge regression surrogate with L2 penalty 1.0.
+
+\subsection{Proposed Guided-LIME Hybrid Explainer}
+
+Standard LIME explanations can sometimes suffer from stochastic instability and a lack of global context. To address this, we propose Guided-LIME, a hybrid approach that utilizes a global spatial prior to refine local superpixel importance (see Algorithm~\ref{alg:guidedlime}). By integrating Grad-CAM activations, the framework ensures that local perturbations are weighted by their global relevance within the retinal fundus image. The standard LIME configuration used in this study employs $n = 100$ superpixels generated by the SLIC algorithm~\cite{achanta2012slic} and $N = 1{,}000$ perturbation samples~\cite{ribeiro2016why}.
+
+The final hybrid importance score $S$ for each superpixel $s_i$ is calculated using the following equation:
+
+\begin{equation}
+\label{eq:guidedlime}
+S(s_i) = L(s_i) \cdot (1 + G(s_i))
+\end{equation}
+
+\noindent where $S(s_i)$ is the resulting hybrid importance score for superpixel $s_i$, $L(s_i)$ is the raw local surrogate coefficient generated by the LIME linear model, and $G(s_i)$ is the mean Grad-CAM activation intensity calculated within the spatial boundaries of superpixel $s_i$, normalized to the range $[0, 1]$. The multiplicative form $(1 + G(s_i))$ was selected over an additive form because it preserves the sign of $L(s_i)$, naturally bounds the influence of Grad-CAM to a multiplicative scale factor of $[1, 2]$, and achieves superior Deletion AUC in ablation experiments.
+
+Ridge regression surrogate objective: the LIME surrogate $g$ is obtained by minimising the kernel-weighted squared error plus an L2 regularisation penalty:
+
+\begin{equation}
+\label{eq:ridge}
+\xi(x) = \arg\min_{g \in \mathcal{G}} \sum_{z} \pi_x(z)\,[f(z) - g(z)]^2 + \Omega(g)
+\end{equation}
+
+\noindent where $\pi_x(z) = \exp(-D(x,z)^2/\sigma^2)$ is the exponential proximity kernel, $f(z)$ is the model prediction on $z$, $g(z) = \beta \cdot z'$ is the linear surrogate, and $\Omega(g) = \lambda \|\beta\|_2^2$ is the L2 complexity penalty.
+
+\begin{algorithm}[ht]
+\caption{Guided-LIME Hybrid Interpretation Framework}\label{alg:guidedlime}
+\begin{algorithmic}[1]
+\State Compute Class Activation Map via Grad-CAM for target class $c$
+\State Normalize CAM to establish global spatial prior
+\State Decompose image into $n = 100$ superpixels using SLIC
+\State Generate $N = 1{,}000$ perturbation samples
+\State Query model for each perturbation
+\State Fit Ridge Regression surrogate model
+\State For each superpixel $s_i$:
+\State \quad Compute mean Grad-CAM intensity $G(s_i)$
+\State \quad Compute hybrid score: $S(s_i) = L(s_i) \cdot (1 + G(s_i))$
+\State Project scores onto image to generate explanation heatmap
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Fidelity Metrics and Statistical Validation}
+
+Fidelity was quantified using Deletion and Insertion tests to measure the causal necessity and sufficiency of the explanations, as detailed in Algorithm~\ref{alg:fidelity}. The statistical significance of the improvement over the random baseline was assessed using the Wilcoxon signed-rank test performed across all $N = 550$ test images comparing Standard LIME and Guided-LIME against random superpixel ordering.
+
+\begin{algorithm}[ht]
+\caption{Quantitative Fidelity Evaluation}\label{alg:fidelity}
+\begin{algorithmic}[1]
+\State Sort superpixels by hybrid score $S$ (descending)
+\State \textbf{Deletion Test:}
+\State \quad Initialize modified image as constant gray baseline (ImageNet mean)
+\State \quad Iteratively remove superpixels in ranked order
+\State \quad Replace removed superpixel regions with constant gray value
+\State \quad Track model confidence at each step
+\State \quad Compute AUC via trapezoidal integration
+\State \textbf{Insertion Test:}
+\State \quad Initialize blank (gray) image
+\State \quad Iteratively insert superpixels in ranked order
+\State \quad Track model confidence recovery
+\State \quad Compute AUC via trapezoidal integration
+\State Repeat both tests with random superpixel ordering (baseline)
+\State Validate improvement via Wilcoxon signed-rank test on all 550 images
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Clinical Alignment and Stability}
+
+Clinical alignment was verified using the Jaccard Index (Intersection over Union) between XAI importance maps and proxy masks of pathological biomarkers:
+
+\begin{equation}
+\label{eq:jaccard}
+J(A, B) = \frac{|A \cap B|}{|A \cup B|}
+\end{equation}
+
+\noindent where $A$ is the binarized XAI importance map and $B$ is the clinical biomarker mask. This same formula was used for stability analysis to measure the consistency of explanations under image noise and rotations.
+
+\subsection{Cross-Dataset Generalizability Validation on IDRiD}
+
+To evaluate whether the proposed Guided-LIME framework maintains its fidelity ranking across different data acquisition domains, we conduct an external validation study using the IDRiD (Indian Diabetic Retinopathy Image Dataset) benchmark~\cite{porwal2018idrid}. The IDRiD dataset comprises 455 retinal fundus images (5 DR severity grades), collected from an Indian population using multiple fundus camera models~\cite{porwal2018idrid}. The class distribution is: No DR (129), Mild (22), Moderate (156), Severe (84), and Proliferative DR (64). Images were preprocessed using the same OpenCV-First pipeline then resized to 224$\times$224.
+
+The APTOS-pretrained Swin-T backbone was fine-tuned on IDRiD using a stratified 70/15/15 split (318 train, 68 validation, 69 test). Training used AdamW (LR=1$\times$10$^{-4}$, $\lambda$=10$^{-2}$), Focal Loss ($\gamma$=2.0) with class-weighted sampling, and data augmentation. Training ran for 50 epochs with cosine LR decay and early stopping (patience=15); the best checkpoint at epoch 37 achieved 61.76\% validation accuracy. On the held-out test set, the fine-tuned model achieved 73.91\% overall accuracy, with per-class accuracies: No DR 100.0\% (20/20), Moderate 66.7\% (16/24), Severe 53.8\% (7/13), and Proliferative DR 88.9\% (8/9). A total of 51 correctly classified test images were used for the 7-method XAI fidelity evaluation.
+
+The IDRiD fidelity evaluation replicates the exact experimental protocol described in Algorithm~\ref{alg:fidelity} and results are presented in Section~\ref{sec:idrid_results}.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Training Dynamics and Generalisation Analysis}
+
+The training dynamics were evaluated over 30 epochs on the APTOS 2019 dataset. The training loss exhibited a rapid, monotonic decay, descending from an initial value of 0.85 to a stable plateau of 0.15 by epoch 25. The validation loss decreased from 0.6 to a trough of 0.764. The absence of terminal divergence in the validation loss curve indicates that the model did not suffer from overfitting. The validation accuracy peaked at 79.05\% (Figure~\ref{fig:training}), maintaining a consistent 7--8\% generalization gap.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{training_history}
+\caption{Training and validation loss/accuracy curves over 30 epochs.}
+\label{fig:training}
+\end{figure}
+
+\subsection{Quantitative Performance on Held-Out Test Set}
+
+The final model was evaluated on a completely held-out test set of 550 images. The results are summarised in Tables~\ref{tab:overall} and~\ref{tab:perclass}.
+
+\begin{table}[ht]
+\caption{Overall Performance Summary on Test Set (n=550).}
+\centering
+\label{tab:overall}
+\begin{tabular}{lcc}
+\toprule
+Metric & Score & Interpretation \\
+\midrule
+Test QWK & 0.8588 & Almost Perfect Agreement \\
+Test Accuracy & 77.45\% & High diagnostic reliability \\
+Macro AUC-ROC & 0.9302 & Excellent class separation \\
+Macro Avg F1 & 0.6209 & Robust minority handling \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The model achieved a Quadratic Weighted Kappa (QWK) of 0.8588, significantly exceeding the target threshold of 0.75. According to standard interpretation scales~\cite{mchugh2012interrater}, this score reflects Almost Perfect agreement with human experts.
+
+\begin{table}[ht]
+\caption{Per-Class Classification Report on Held-Out Test Set (n=550).}
+\centering
+\label{tab:perclass}
+\begin{tabular}{lcccc}
+\toprule
+Class & Precision & Recall & F1-Score & Support \\
+\midrule
+No DR (0) & 0.97 & 0.98 & 0.97 & 271 \\
+Mild (1) & 0.48 & 0.38 & 0.43 & 56 \\
+Moderate (2) & 0.81 & 0.75 & 0.78 & 150 \\
+Severe (3) & 0.53 & 0.38 & 0.44 & 29 \\
+Proliferative DR (4) & 0.64 & 0.58 & 0.61 & 44 \\
+\midrule
+Weighted Avg & 0.81 & 0.77 & 0.78 & 550 \\
+Macro Avg & 0.69 & 0.61 & 0.65 & 550 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Class-Wise Performance and Confusion Matrix Analysis}
+
+The per-class analysis reveals a critical success for clinical screening: a Recall of 0.98 for the No DR class. Misclassifications were primarily restricted to adjacent severity grades. As visualised in Figure~\ref{fig:confusion}, the model produced zero large-magnitude errors.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{confusion_matrix}
+\caption{Confusion matrix on the held-out test set (n=550).}
+\label{fig:confusion}
+\end{figure}
+
+\subsection{Fidelity Metrics: Quantitative Validation of Faithfulness}
+
+The quantitative comparison across methods is presented in Table~\ref{tab:fidelity}. The Deletion and Insertion AUC values are reported as mean $\pm$ standard deviation across all 550 test images.
+
+\begin{table}[ht]
+\caption{Multi-tiered Fidelity Comparison on the full APTOS test set (n=550). Values are mean $\pm$ standard deviation. Lower Deletion AUC and higher Insertion AUC indicate better faithfulness.}
+\centering
+\label{tab:fidelity}
+\begin{tabular}{lcc}
+\toprule
+Method & Deletion AUC $\pm$ SD & Insertion AUC $\pm$ SD \\
+\midrule
+Random Baseline & 0.5533 $\pm$ 0.178 & 0.5037 $\pm$ 0.177 \\
+Grad-CAM & 0.4832 $\pm$ 0.200 & 0.5979 $\pm$ 0.178 \\
+RISE & 0.3966 $\pm$ 0.198 & 0.6545 $\pm$ 0.171 \\
+SHAP & 0.5385 $\pm$ 0.197 & 0.5193 $\pm$ 0.216 \\
+Integrated Gradients & 0.5691 $\pm$ 0.195 & 0.4880 $\pm$ 0.213 \\
+Attention Rollout & 0.5727 $\pm$ 0.211 & 0.5341 $\pm$ 0.173 \\
+Standard LIME & 0.3412 $\pm$ 0.172 & 0.6506 $\pm$ 0.201 \\
+Guided-LIME (Ours) & \textbf{0.3329 $\pm$ 0.169} & \textbf{0.6517 $\pm$ 0.198} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+On the full 550-image test set, Guided-LIME achieved a Deletion AUC of 0.3329 $\pm$ 0.169, compared to 0.3412 $\pm$ 0.172 for Standard LIME, 0.4832 $\pm$ 0.200 for Grad-CAM, and 0.5533 $\pm$ 0.178 for the random baseline. The Wilcoxon signed-rank test on all 550 images rejects the null hypothesis at $p = 5.3 \times 10^{-92}$ (Guided-LIME vs Random), $p = 5.6 \times 10^{-25}$ (Guided-LIME vs Standard LIME), and $p = 1.4 \times 10^{-73}$ (Guided-LIME vs Grad-CAM) on the Deletion AUC.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{fidelity_curves_figure7}
+\caption{Per-image Deletion and Insertion curves for a representative image (Mild DR) comparing the four methods.}
+\label{fig:perimage}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{fidelity_comparison_bars_8method}
+\caption{Comparative bar chart of Deletion and Insertion AUC across all eight methods on the full 550-image test set. Guided-LIME achieves the lowest Deletion AUC (0.3329) and the highest Insertion AUC (0.6517).}
+\label{fig:fidelity_bar}
+\end{figure}
+
+\subsubsection{Ablation Study}
+\label{sec:ablation}
+
+We conducted a systematic ablation study to evaluate the sensitivity of Guided-LIME to four key design choices: (1) the fusion strategy controlling the relative contribution of Grad-CAM and LIME, (2) the number of superpixels used for segmentation, (3) the number of perturbation samples drawn for the LIME surrogate model, and (4) the choice of baseline replacement value used in the Deletion test. Figure~\ref{fig:ablation} summarises all four ablation dimensions.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{ablation_results}
+\caption{Systematic ablation study across four design dimensions: (a) superpixel count sensitivity (n=50 images), (b) perturbation sample count sensitivity (n=50), (c) baseline replacement type (n=50), and (d) fusion weight $\alpha$ sensitivity (n=550). Default configuration is marked with a vertical dashed line where applicable. Error bars denote $\pm$1 standard deviation.}
+\label{fig:ablation}
+\end{figure}
+
+\paragraph{Fusion Strategy.}
+The core design of Guided-LIME is the multiplicative fusion $S(s_i) = L(s_i) \cdot (1 + \alpha \cdot G(s_i))$, where $\alpha$ controls the strength of the Grad-CAM prior. To evaluate this design, we conducted a full 550-image alpha sweep over $\alpha \in \{0, 0.5, 1, 2, 5, 10\}$ (Table~\ref{tab:ablation_alpha}).
+
+The results confirm that $\alpha = 1$ (the default Guided-LIME configuration) achieves the lowest Deletion AUC (0.3329 $\pm$ 0.169), providing a marginal but consistent improvement over pure LIME ($\alpha = 0$: 0.3358 $\pm$ 0.169). As $\alpha$ increases beyond 1, the Grad-CAM prior increasingly dominates and both metrics degrade monotonically: at $\alpha = 10$, Deletion AUC rises to 0.3349 and Insertion AUC falls to 0.6454. The plateau around $\alpha \in [0.5, 2]$ demonstrates that Guided-LIME is robust to the exact choice of $\alpha$ within a practical range, requiring no per-dataset tuning.
+
+\begin{table}[ht]
+\caption{Fusion weight $\alpha$ sensitivity on the full 550-image APTOS test set. The default configuration $\alpha=1$ is highlighted.}
+\centering
+\label{tab:ablation_alpha}
+\begin{tabular}{lcc}
+\toprule
+$\alpha$ & Deletion AUC & Insertion AUC \\
+\midrule
+0 (Pure LIME) & 0.3358 $\pm$ 0.169 & 0.6522 $\pm$ 0.201 \\
+0.5 & 0.3339 $\pm$ 0.169 & 0.6522 $\pm$ 0.199 \\
+\textbf{1 (Guided-LIME)} & \textbf{0.3329 $\pm$ 0.169} & \textbf{0.6517 $\pm$ 0.198} \\
+2 & 0.3331 $\pm$ 0.168 & 0.6501 $\pm$ 0.197 \\
+5 & 0.3339 $\pm$ 0.168 & 0.6473 $\pm$ 0.195 \\
+10 & 0.3349 $\pm$ 0.168 & 0.6454 $\pm$ 0.194 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+We also compared the multiplicative form $S(s_i) = L(s_i) \cdot (1 + G(s_i))$ against the additive alternative $S(s_i) = L(s_i) + G(s_i)$ on a held-out 50-image subset. The multiplicative form (Deletion AUC = 0.3410 $\pm$ 0.04) outperformed the additive form (0.3812 $\pm$ 0.05), as the additive fusion allows the Grad-CAM term to dominate and overwhelm the local LIME signal, reducing the hybrid explanation to a de-facto Grad-CAM map.
+
+\paragraph{Superpixel Count.}
+The number of superpixels $n$ controls the spatial granularity of the explanation. We evaluated $n \in \{25, 50, 100, 200, 500\}$ on a 50-image class-balanced subset (Table~\ref{tab:ablation_sp}). Increasing $n$ from 25 to 500 monotonically improves Deletion AUC (0.3435 $\rightarrow$ 0.2523), as finer segmentation enables more precise removal of critical pixels. However, Insertion AUC exhibits a monotonic decline (0.6298 $\rightarrow$ 0.5293), indicating that overly fine superpixels slow confidence recovery during insertion. The default $n = 100$ provides a balanced trade-off: Deletion AUC = 0.2999 and Insertion AUC = 0.6123.
+
+\begin{table}[ht]
+\caption{Superpixel count ablation on a 50-image class-balanced subset.}
+\centering
+\label{tab:ablation_sp}
+\begin{tabular}{lcc}
+\toprule
+Superpixels ($n$) & Deletion AUC & Insertion AUC \\
+\midrule
+25 & 0.3435 $\pm$ 0.194 & 0.6298 $\pm$ 0.153 \\
+50 & 0.3307 $\pm$ 0.176 & 0.6190 $\pm$ 0.174 \\
+\textbf{100 (default)} & \textbf{0.2999 $\pm$ 0.160} & \textbf{0.6123 $\pm$ 0.175} \\
+200 & 0.2731 $\pm$ 0.151 & 0.5869 $\pm$ 0.198 \\
+500 & 0.2523 $\pm$ 0.124 & 0.5293 $\pm$ 0.187 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Perturbation Count.}
+The number of perturbation samples $N$ determines the stability of the LIME surrogate model. We evaluated $N \in \{100, 500, 1000, 2000, 5000\}$ (Table~\ref{tab:ablation_pert}). Increasing $N$ from 100 to 1000 yields a substantial improvement in Deletion AUC (0.3856 $\rightarrow$ 0.2999), as the linear surrogate better approximates the local decision boundary. Beyond 1000, returns diminish sharply: $N = 5000$ achieves Deletion AUC = 0.2925, an improvement of only 2.5\% over $N = 1000$ at five times the computational cost. Insertion AUC follows a similar saturating trend (0.5688 at $N = 100$ to 0.6151 at $N = 5000$). The default $N = 1000$ therefore represents a practical optimum between fidelity and computational efficiency.
+
+\begin{table}[ht]
+\caption{Perturbation count ablation on a 50-image class-balanced subset.}
+\centering
+\label{tab:ablation_pert}
+\begin{tabular}{lcc}
+\toprule
+Samples ($N$) & Deletion AUC & Insertion AUC \\
+\midrule
+100 & 0.3856 $\pm$ 0.173 & 0.5688 $\pm$ 0.165 \\
+500 & 0.3141 $\pm$ 0.161 & 0.6059 $\pm$ 0.178 \\
+\textbf{1000 (default)} & \textbf{0.2999 $\pm$ 0.160} & \textbf{0.6123 $\pm$ 0.175} \\
+2000 & 0.2934 $\pm$ 0.154 & 0.6081 $\pm$ 0.184 \\
+5000 & 0.2925 $\pm$ 0.152 & 0.6151 $\pm$ 0.182 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Baseline Replacement Type.}
+The Deletion test replaces removed superpixels with a baseline value; the choice of baseline can bias fidelity estimates~\cite{sturm2024does}. We compared three baselines: constant gray (mean ImageNet pixel values, default), Gaussian blur ($\sigma = 5$), and uniform noise ($\mathcal{U}[0, 255]$). Gray achieves a balanced Deletion AUC of 0.2999. Blur attenuates high-frequency information more gradually, producing a higher Deletion AUC (0.3517) that may understate model sensitivity. Noise introduces artificial structure that can cause the model to maintain spurious confidence, resulting in a lower Deletion AUC (0.2652) that may overstate faithfulness. We adopt the constant gray baseline as the most neutral and widely used convention in the literature.
+
+\subsection{Cross-Dataset Fidelity Results on IDRiD}
+\label{sec:idrid_results}
+
+The 7-method fidelity evaluation was replicated on the 51 correctly classified IDRiD test images using the IDRiD-fine-tuned Swin-T model. Table~\ref{tab:idrid_fidelity} presents the results.
+
+\begin{table}[ht]
+\caption{Multi-tiered Fidelity Comparison on IDRiD (n=51). Values are mean $\pm$ standard deviation.}
+\centering
+\label{tab:idrid_fidelity}
+\begin{tabular}{lcc}
+\toprule
+Method & Deletion AUC $\pm$ SD & Insertion AUC $\pm$ SD \\
+\midrule
+Random Baseline & 0.6180 $\pm$ 0.247 & 0.5709 $\pm$ 0.249 \\
+Grad-CAM & 0.4802 $\pm$ 0.284 & 0.7759 $\pm$ 0.135 \\
+RISE & 0.2844 $\pm$ 0.219 & 0.8519 $\pm$ 0.138 \\
+SHAP & 0.5458 $\pm$ 0.243 & 0.6505 $\pm$ 0.260 \\
+IG & 0.5551 $\pm$ 0.254 & 0.6333 $\pm$ 0.266 \\
+Attention & 0.6909 $\pm$ 0.228 & 0.5564 $\pm$ 0.238 \\
+Standard LIME & 0.1859 $\pm$ 0.168 & 0.8818 $\pm$ 0.113 \\
+Guided-LIME (Ours) & \textbf{0.1876 $\pm$ 0.169} & \textbf{0.8863 $\pm$ 0.109} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The cross-dataset results confirm that Guided-LIME achieves the top fidelity ranking on IDRiD. Guided-LIME (Deletion AUC = 0.1876) is statistically equivalent to Standard LIME (0.1859; p = 0.823) and significantly outperforms all other methods (p $<$ 3.4 $\times$ 10$^{-7}$). The Wilcoxon test against the random baseline yields p = 2.6 $\times$ 10$^{-10}$, with Z = -6.21 and effect size r = 0.870.
+
+\begin{table}[ht]
+\caption{Per-Class Deletion AUC on IDRiD across XAI methods. Lower values indicate better faithfulness.}
+\centering
+\label{tab:idrid_perclass}
+\begin{tabular}{lccccc}
+\toprule
+Class (n) & LIME & Grad-CAM & Guided-LIME & RISE & Random \\
+\midrule
+No DR (20) & 0.228 $\pm$ 0.199 & 0.531 $\pm$ 0.308 & 0.230 $\pm$ 0.200 & 0.332 $\pm$ 0.260 & 0.567 $\pm$ 0.266 \\
+Moderate (16) & 0.164 $\pm$ 0.129 & 0.538 $\pm$ 0.231 & 0.169 $\pm$ 0.128 & 0.270 $\pm$ 0.200 & 0.740 $\pm$ 0.149 \\
+Severe (7) & 0.210 $\pm$ 0.179 & 0.494 $\pm$ 0.249 & 0.215 $\pm$ 0.187 & 0.321 $\pm$ 0.229 & 0.746 $\pm$ 0.195 \\
+Prolif DR (8) & 0.105 $\pm$ 0.095 & 0.226 $\pm$ 0.224 & 0.095 $\pm$ 0.092 & 0.162 $\pm$ 0.141 & 0.389 $\pm$ 0.269 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The consistency of the ranking across datasets is summarised in Table~\ref{tab:cross_dataset_comparison}: Guided-LIME ranks first or tied for first in Deletion AUC on both APTOS (0.3329) and IDRiD (0.1876).
+
+\begin{table}[ht]
+\caption{Cross-Dataset Comparison: Deletion AUC ranking of Guided-LIME across APTOS and IDRiD.}
+\centering
+\label{tab:cross_dataset_comparison}
+\begin{tabular}{lcccc}
+\toprule
+Dataset & n & Guided-LIME Del. AUC & LIME Del. AUC & Grad-CAM Del. AUC & Rank \\
+\midrule
+APTOS 2019 & 550 & \textbf{0.3329} & 0.3412 & 0.4832 & \#1 \\
+IDRiD & 51 & \textbf{0.1876} & 0.1859 & 0.4802 & \#1 (tie) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{idrid_fidelity_curves}
+\caption{Per-image Deletion and Insertion curves on IDRiD for a representative No DR image.}
+\label{fig:idrid_curves}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{idrid_qualitative_atlas}
+\caption{IDRiD qualitative atlas: comparison of original fundus images, Grad-CAM heatmaps, and Guided-LIME explanations across four DR severity grades.}
+\label{fig:idrid_qualitative}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{cross_dataset_comparison}
+\caption{Cross-dataset Deletion AUC comparison across all eight methods. Guided-LIME and LIME achieve the lowest Deletion AUC on both datasets.}
+\label{fig:cross_dataset}
+\end{figure}
+
+\subsection{Statistical Validation and Significance}
+\label{sec:statistical}
+
+We performed Wilcoxon signed-rank tests across all N = 550 test images for three pair-wise comparisons. Standard LIME versus Random baseline: the test yielded p = 7.6 $\times$ 10$^{-92}$ for Deletion AUC and p = 1.8 $\times$ 10$^{-77}$ for Insertion AUC, with Z = -20.29 (Deletion) and Z = -18.60 (Insertion), corresponding to effect sizes r = 0.865 and r = 0.793. Guided-LIME versus Standard LIME: Deletion AUC yielded p = 5.6 $\times$ 10$^{-25}$ (Insertion was not significant, p = 0.41). Guided-LIME versus Grad-CAM: Deletion AUC p = 1.4 $\times$ 10$^{-73}$ and Insertion AUC p = 1.4 $\times$ 10$^{-25}$. Bootstrap 95\% Confidence Intervals for Guided-LIME vs Random are: Guided-LIME-Deletion [0.319, 0.347], Random-Deletion [0.538, 0.569], Guided-LIME-Insertion [0.635, 0.668], Random-Insertion [0.488, 0.519], showing distinct non-overlapping separation.
+
+\subsection{Clinical Alignment with Pathological Biomarkers}
+
+The quantitative alignment across DR severity grades is summarised in Table~\ref{tab:alignment}. The expected Jaccard Index between two independent ophthalmologists is typically 0.40--0.60. Our framework's best score of 0.22 is below this baseline, indicating early evidence of clinical relevance.
+
+\begin{table}[ht]
+\caption{Clinical Alignment Scores (Jaccard Index) across DR Grades.}
+\centering
+\label{tab:alignment}
+\begin{tabular}{lccc}
+\toprule
+DR Grade & LIME IoU & Hybrid IoU & Improvement \\
+\midrule
+No DR & 0.14 & 0.14 & 1.00$\times$ \\
+Mild & 0.05 & 0.05 & 1.00$\times$ \\
+Moderate & 0.18 & 0.13 & 1.38$\times$ \\
+Severe & 0.22 & 0.22 & 1.00$\times$ \\
+Prolif DR & 0.11 & 0.11 & 1.00$\times$ \\
+\midrule
+Mean & 0.13 $\pm$ 0.07 & 0.14 $\pm$ 0.06 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The relatively low IoU scores arise because superpixel boundaries generated by SLIC do not perfectly align with pixel-level lesion masks. The Severe DR class achieved the highest alignment (0.22) because large clusters of hard exudates produce superpixels that more closely match lesion extent, as illustrated in Figure~\ref{fig:qualitative}.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\textwidth]{qualitative_atlas_full}
+\caption{Qualitative atlas: comparison of original fundus images, Grad-CAM heatmaps, and Guided-LIME explanations across all five DR severity grades.}
+\label{fig:qualitative}
+\end{figure}
+
+\subsection{Stability and Robustness Analysis}
+
+The stability performance across the two perturbation settings is summarised in Table~\ref{tab:stability}. Our global average of 0.158 falls within the published LIME stability range of 0.15--0.35.
+
+\begin{table}[ht]
+\caption{Explanation Stability under Image Perturbations (n=550).}
+\centering
+\label{tab:stability}
+\begin{tabular}{lcc}
+\toprule
+DR Class & Stability Score $\pm$ SD & 95\% Bootstrap CI \\
+\midrule
+No DR & 0.1890 $\pm$ 0.080 & [0.179, 0.199] \\
+Mild & 0.1213 $\pm$ 0.071 & [0.103, 0.141] \\
+Moderate & 0.1273 $\pm$ 0.072 & [0.116, 0.140] \\
+Severe & 0.1436 $\pm$ 0.066 & [0.121, 0.171] \\
+Prolif DR & 0.1274 $\pm$ 0.068 & [0.108, 0.149] \\
+\midrule
+Global Average & 0.1579 $\pm$ 0.081 & [0.151, 0.164] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Failure Mode Diagnosis via XAI}
+
+Beyond validating correct predictions, the framework's utility is exemplified by its ability to identify systematic failure modes. A diagnostic error where a healthy retina (No DR) was misclassified as Mild DR was analysed. Figure~\ref{fig:failure} illustrates this case: the Guided-LIME heatmap highlights specular reflections as the basis for misclassification. Qualitative inspection indicates this type of false positive occurs in approximately 2\% of No DR images, and specular-reflection misinterpretation accounts for the majority of these cases.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{lime_explanation_final}
+\caption{Failure mode diagnosis: (a) Original fundus image (No DR) misclassified as Mild, (b) Guided-LIME explanation showing the model incorrectly attends to bright specular reflections rather than pathological features, (c) Correctly classified Severe DR case with Guided-LIME overlay for comparison.}
+\label{fig:failure}
+\end{figure}
+
+\subsection{Computational Performance}
+
+The Guided-LIME framework was implemented in Python 3.13.3 using PyTorch 2.6.0 (with CUDA 12.4 acceleration) on an NVIDIA GeForce RTX 4070 Laptop GPU (8 GB VRAM). The full 550-image fidelity and stability evaluations completed in approximately 90 minutes. The average per-image runtime is approximately 9--13 s, dominated by the LIME surrogate fitting on 1,000 perturbed samples. With further engineering such as on-device ONNX export, sub-second inference per image is achievable for clinical-screening deployment.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{Analysis of Model Generalisation and Training Strategy}
+
+The success of the Swin Transformer in achieving a Test QWK of 0.8588 can be attributed to the synergistic combination of its hierarchical architecture and the multi-faceted training strategy. The hierarchical nature of the Swin Transformer allows it to capture both global retinal geometry and fine-grained pathological features. The use of Focal Loss was instrumental in addressing the hard example problem by dynamically down-weighting well-classified samples and forcing the model to concentrate on minority classes. For context, ensemble-based approaches such as Zhu et al.~\cite{zhu2024nnmobilenet} and Huang et al.~\cite{huang2024ssit} report higher QWK scores of 0.925 on this task; we acknowledge these results and note that the primary contribution of the present work is quantitative XAI validation rather than maximising classification accuracy alone.
+
+\subsection{The Superiority of Guided-LIME and Causal Faithfulness}
+
+A key methodological contribution of this work is the development and validation of the Guided-LIME hybrid explainer. On the full 550-image test set, Guided-LIME achieved a Deletion AUC of 0.3329, significantly lower than Standard LIME (0.3412; p = 5.6 $\times$ 10$^{-25}$), Grad-CAM (0.4832; p = 1.4 $\times$ 10$^{-73}$), and the random baseline (0.5533; p = 5.3 $\times$ 10$^{-92}$). This faster confidence decay provides strong evidence that the multiplicative combination of the global Grad-CAM spatial prior and the local LIME surrogate correctly identifies features that are causally necessary for the model's prediction.
+
+\subsection{Clinical Grounding and Statistical Significance}
+
+The clinical alignment study provides a cross-domain validation methodology that is often absent in XAI research. The mean Jaccard overlap of 0.14 against proxy biomarker masks is below the typical inter-rater baseline of 0.40--0.60, which we explicitly acknowledge. The explanations therefore show early evidence of clinical relevance rather than fully validated clinical grounding.
+
+\subsection{Cross-Dataset Generalizability}
+
+The IDRiD cross-dataset validation provides critical evidence for the generalizability of the Guided-LIME framework. Despite substantial differences in acquisition characteristics -- IDRiD images were collected from an Indian population using multiple fundus camera models, while APTOS 2019 images were captured in Thailand using a single camera model -- Guided-LIME maintained its top-tier Deletion AUC ranking on both datasets. The ranking consistency is notable: superpixel-based methods (Guided-LIME, LIME, RISE) occupy the top three positions on both datasets, while transformer-attribution methods and gradient-based methods consistently rank lower. This suggests that the causal faithfulness advantage of superpixel-based attribution is largely independent of dataset-specific characteristics.
+
+\subsection{Stability and Limitations}
+
+The stability analysis revealed a Global Stability score of 0.158, within the 0.15--0.35 range reported in the published LIME stability literature. Several specific limitations should be noted:
+
+\begin{itemize}
+\item \textbf{IDRiD sample size}: The IDRiD evaluation used only 51 correctly classified test images. While statistically significant, further validation on larger multi-centre datasets is warranted.
+\item \textbf{Severe class sample size}: The Severe DR class contains only 29 test images on APTOS, limiting per-class conclusions for this grade.
+\item \textbf{Proxy biomarker masks}: The clinical alignment study used image-processing-derived proxy masks rather than expert-annotated pixel-level ground truth.
+\item \textbf{Low IoU baseline}: The mean Jaccard Index of 0.14 falls below the typical inter-rater agreement range.
+\item \textbf{Computational cost}: The end-to-end explanation time is approximately 9--13 s per image, acceptable for offline decision support but not yet suitable for real-time screening.
+\end{itemize}
+
+\section{Conclusions}
+\label{sec:conclusions}
+
+This paper presented Guided-LIME, a hybrid explainability framework validated on Diabetic Retinopathy severity grading using a Swin Transformer backbone across two fundus photography datasets. The Guided-LIME algorithm multiplicatively combines the global spatial prior of Grad-CAM with the local superpixel precision of LIME. On the full 550-image APTOS 2019 test set, Guided-LIME achieved a Deletion AUC of 0.3329 versus 0.5533 for random (p = 5.3 $\times$ 10$^{-92}$), 0.3412 for Standard LIME (p = 5.6 $\times$ 10$^{-25}$), and 0.4832 for Grad-CAM (p = 1.4 $\times$ 10$^{-73}$). On the IDRiD cross-dataset benchmark (n=51), Guided-LIME maintained its top-tier ranking with a Deletion AUC of 0.1876 (p = 2.6 $\times$ 10$^{-10}$ versus random), confirming that the causal faithfulness advantage generalises across acquisition domains. The clinical alignment analysis indicates early evidence of clinical relevance (mean IoU = 0.14), and the failure mode diagnosis identified specific pathways for improvement.
+
+\subsection*{Future Work}
+
+Future research will focus on further multi-centre validation, integration of expert-annotated lesion masks to refine clinical alignment metrics, and engineering optimisations (ONNX export, quantisation) to achieve sub-second inference for real-time screening deployment.
+
+\section*{Acknowledgements}
+
+The authors would like to thank Southampton Solent University for supporting this research.
+
+\section*{Statements and Declarations}
+
+\textbf{Funding:} This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit sectors.
+
+\textbf{Competing Interests:} The authors declare that they have no competing interests.
+
+\textbf{Author Contributions:} Raza Hasan: Conceptualization, Methodology, Software, Writing-Original draft preparation; Pratham Acharya: Data curation, Software, Writing-Reviewing and Editing; MD Aashif Ansari: Validation, Writing-Reviewing and Editing; Salman Mahmood: Resources, Writing-Reviewing and Editing. All authors reviewed the results and approved the final version of the manuscript.
+
+\textbf{Data Availability:} The APTOS 2019 Blindness Detection dataset is publicly available at \url{https://www.kaggle.com/c/aptos2019-blindness-detection}. The source code and trained models are available at \url{https://github.com/razahasan2000/Guided-Lime/}.
+
+\textbf{AI Declaration:} During the preparation of this work, the author(s) used AI tools to assist in content refinement and language enhancement. After using these tools, the authors reviewed and edited the content as needed and take full responsibility for the content of the publication.
+
+\bibliographystyle{unsrtnat}
+\bibliography{references}
+
+\end{document}

@@ -1,0 +1,63 @@
+{
+  "test_set": {
+    "No_DR": [
+      "IDRiD_030test.jpg",
+      "IDRiD_037test.jpg",
+      "IDRiD_154.jpg",
+      "IDRiD_156.jpg",
+      "IDRiD_182.jpg",
+      "IDRiD_206.jpg",
+      "IDRiD_214.jpg",
+      "IDRiD_217.jpg",
+      "IDRiD_220.jpg",
+      "IDRiD_229.jpg",
+      "IDRiD_255.jpg",
+      "IDRiD_259.jpg",
+      "IDRiD_268.jpg",
+      "IDRiD_270.jpg",
+      "IDRiD_297.jpg",
+      "IDRiD_298.jpg",
+      "IDRiD_312.jpg",
+      "IDRiD_353.jpg",
+      "IDRiD_378.jpg",
+      "IDRiD_406.jpg"
+    ],
+    "Moderate": [
+      "IDRiD_047.jpg",
+      "IDRiD_048.jpg",
+      "IDRiD_050.jpg",
+      "IDRiD_059.jpg",
+      "IDRiD_059test.jpg",
+      "IDRiD_064.jpg",
+      "IDRiD_074.jpg",
+      "IDRiD_084.jpg",
+      "IDRiD_121.jpg",
+      "IDRiD_294.jpg",
+      "IDRiD_310.jpg",
+      "IDRiD_322.jpg",
+      "IDRiD_328.jpg",
+      "IDRiD_333.jpg",
+      "IDRiD_343.jpg",
+      "IDRiD_401.jpg"
+    ],
+    "Severe": [
+      "IDRiD_021test.jpg",
+      "IDRiD_027test.jpg",
+      "IDRiD_075.jpg",
+      "IDRiD_088test.jpg",
+      "IDRiD_320.jpg",
+      "IDRiD_344.jpg",
+      "IDRiD_377.jpg"
+    ],
+    "Proliferative_DR": [
+      "IDRiD_001test.jpg",
+      "IDRiD_004test.jpg",
+      "IDRiD_008.jpg",
+      "IDRiD_022.jpg",
+      "IDRiD_027.jpg",
+      "IDRiD_028.jpg",
+      "IDRiD_096.jpg",
+      "IDRiD_324.jpg"
+    ]
+  }
+}
