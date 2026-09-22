@@ -94,16 +94,16 @@ Total per-image explanation time is approximately 9–13 s on the above hardware
 
 ## Quick Start: Reproducing the Headline Results
 
-1. Place the APTOS 2019 dataset under `DR_XAI_Project/data/colored_images/{No_DR,Mild,Moderate,Severe,Proliferate_DR}/`.
-2. Place the trained Swin-T checkpoint at `DR_XAI_Project/models/swin_transformer_final_generalized.pth`.
-3. From the `DR_XAI_Project/` directory:
+1. Place the APTOS 2019 dataset under `data/colored_images/{No_DR,Mild,Moderate,Severe,Proliferate_DR}/`.
+2. Place the trained Swin-T checkpoint at `models/swin_transformer_final_generalized.pth`.
+3. From the repository root directory:
 
 ```bash
 # Full N=550 fidelity (computes Grad-CAM, Standard LIME, Guided-LIME, Random)
-python run_fidelity_full_3methods.py
+python src/run_fidelity_full_3methods.py
 
 # Full N=550 stability
-python stability_analysis_full.py
+python src/stability_analysis_full.py
 ```
 
 Both scripts save per-image progress incrementally to JSON, so a partial run can be resumed safely.
@@ -131,4 +131,6 @@ MIT License. The trained model weights and the APTOS 2019 dataset are not includ
   note    = {Submitted}
 }
 ```
+
+
 
