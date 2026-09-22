@@ -160,7 +160,7 @@ and report the n = 51 comparison immediately after, noting whether the ranking a
 Guided-vs-LIME relationship are preserved when the 18 misclassified images are included.
 State that the Wilcoxon signed-rank tests vs. the random baseline remain significant
 (paste the p-values from the console block). Then delete the legend box at the top of the
-manuscript before submission.
+manuscript.
 
 ---
 
@@ -188,3 +188,4 @@ manuscript before submission.
   (34/5/32/19/13) and run identically — no code change needed; relabel the n in the text.
 
 Dataset credit: IDRiD is distributed under CC-BY-4.0 (Porwal et al.); cite it as in the manuscript.
+

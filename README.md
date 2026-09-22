@@ -1,6 +1,6 @@
 # Guided-LIME: A Hybrid Explainable AI Framework for Causally Faithful Medical Image Interpretation
 
-This repository contains the experimentation code, figures, and result files for the paper **"Guided-LIME: A Hybrid Explainable AI Framework for Causally Faithful Medical Image Interpretation"** (submitted to *Journal of Computer Science and Technology*).
+This repository contains the experimentation code, figures, and result files for the paper **"Guided-LIME: A Hybrid Explainable AI Framework for Causally Faithful Medical Image Interpretation"** (manuscript in preparation).
 
 Guided-LIME is a hybrid post-hoc explainer that multiplicatively fuses the global spatial prior of Grad-CAM with the local superpixel precision of LIME:
 
@@ -126,8 +126,9 @@ MIT License. The trained model weights and the APTOS 2019 dataset are not includ
   title   = {Guided-LIME: A Hybrid Explainable AI Framework for Causally
              Faithful Medical Image Interpretation},
   author  = {Acharya, Pratham and Hasan, Raza},
-  journal = {Journal of Computer Science and Technology},
+  journal = {Manuscript in preparation},
   year    = {2026},
   note    = {Submitted}
 }
 ```
+
